@@ -18,6 +18,35 @@
 #ifndef M24CXX_H_
 #define M24CXX_H_
 
+#define M24C08 1
 
+#if M24CXX_MODEL == M24C08
+#define M24CXX_SIZE              1024
+#define M24CXX_PAGE_ADDRESS_BITS    2
+#define M24CXX_ADDRESS_BITS         8
+#else
+#error "M24CXX_MODEL must be defined"
+#endif
+
+#ifdef DEBUG
+#define M24CXXDBG(...) printf(__VA_ARGS__);\
+                       printf("\n")
+#else
+#define M24CXXDBG(...)
+#endif
+
+typedef struct {
+    I2C_HandleTypeDef *i2c;
+    uint8_t i2c_address;
+} M24CXX_HandleTypeDef;
+
+typedef enum {
+    M24CXX_Ok,
+    M24CXX_Err
+} M24CXX_StatusTypeDef;
+
+M24CXX_StatusTypeDef m24cxx_init(M24CXX_HandleTypeDef *m24cxx, I2C_HandleTypeDef *i2c, uint8_t i2c_address);
+M24CXX_StatusTypeDef m24cxx_isconnected(M24CXX_HandleTypeDef *m24cxx);
+M24CXX_StatusTypeDef m24cxx_read(M24CXX_HandleTypeDef *m24cxx, uint16_t address, uint8_t *data, uint16_t len);
 
 #endif /* M24CXX_H_ */

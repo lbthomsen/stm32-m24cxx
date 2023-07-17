@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "m24cxx.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,6 +45,11 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
+
+M24CXX_HandleTypeDef m24cxx;
+
+uint8_t buf[M24CXX_SIZE];
+uint8_t do_action = 0;
 
 /* USER CODE END PV */
 
@@ -72,6 +77,13 @@ int _write(int fd, char* ptr, int len) {
       return -1;
   }
   return -1;
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    if (GPIO_Pin == BTN_Pin) // If the button
+    {
+        do_action = 1;
+    }
 }
 
 /* USER CODE END 0 */
@@ -108,11 +120,57 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  DBG("\n\n\n--------\nStarting");
+
+  DBG("Scanning I2C bus:");
+  // Go through all possible i2c addresses
+    for (uint8_t i = 0; i < 128; i++) {
+
+        if (HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i<<1), 3, 100) == HAL_OK) {
+            // We got an ack
+            printf("%2x ", i);
+        } else {
+            printf("-- ");
+        }
+
+        if (i > 0 && (i + 1) % 16 == 0) printf("\n");
+
+    }
+
+    printf("\n");
+
+  if (m24cxx_init(&m24cxx, &hi2c1, 0x50) != M24CXX_Ok) {
+      DBG("M24CXX Failed to initialize");
+      Error_Handler();
+  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+    uint32_t now = 0, last_blink = 0;
+
     while (1) {
+
+        now = HAL_GetTick();
+
+        if (now - last_blink >= 500) {
+            HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+            last_blink = now;
+        }
+
+        if (do_action) {
+            do_action = 0;
+            DBG("Do action!");
+
+            if (m24cxx_read(&m24cxx, 0x00, &buf, sizeof(buf)) != M24CXX_Ok) {
+                DBG("Returned err");
+                Error_Handler();
+            }
+
+        }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -181,7 +239,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 400000;
+  hi2c1.Init.ClockSpeed = 100000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -261,9 +319,13 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : BTN_Pin */
   GPIO_InitStruct.Pin = BTN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
