@@ -49,6 +49,8 @@ M24CXX_StatusTypeDef m24cxx_isconnected(M24CXX_HandleTypeDef *m24cxx) {
 M24CXX_StatusTypeDef m24cxx_read(M24CXX_HandleTypeDef *m24cxx, uint16_t address, uint8_t *data, uint16_t len) {
     M24CXXDBG("M24CXX read - address = 0x%04x len = 0x%04x", address, len);
 
+
+
     return M24CXX_Ok;
 }
 
