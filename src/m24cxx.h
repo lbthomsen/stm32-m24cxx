@@ -19,8 +19,15 @@
 #define M24CXX_H_
 
 #define M24C08 1
+#define M24C01 2
 
 #if M24CXX_MODEL == M24C08
+#define M24CXX_TYPE            "24C08"
+#define M24CXX_SIZE              1024
+#define M24CXX_PAGE_ADDRESS_BITS    2
+#define M24CXX_ADDRESS_BITS         8
+#elif M24CXX_MODEL == M24C01
+#define M24CXX_TYPE            "24C01"
 #define M24CXX_SIZE              1024
 #define M24CXX_PAGE_ADDRESS_BITS    2
 #define M24CXX_ADDRESS_BITS         8

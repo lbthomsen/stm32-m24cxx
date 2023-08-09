@@ -168,7 +168,7 @@ int main(void)
             do_action = 0;
             DBG("Do action!");
 
-            if (m24cxx_read(&m24cxx, 0x00, &buf, sizeof(buf)) != M24CXX_Ok) {
+            if (m24cxx_read(&m24cxx, 0x80, &buf, sizeof(buf)) != M24CXX_Ok) {
                 DBG("Returned err");
                 Error_Handler();
             }
@@ -269,7 +269,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.ClockSpeed = 400000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
