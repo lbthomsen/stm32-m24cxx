@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
 #include "m24cxx.h"
 /* USER CODE END Includes */
 
@@ -50,7 +51,7 @@ UART_HandleTypeDef huart1;
 
 M24CXX_HandleTypeDef m24cxx;
 
-uint8_t buf[M24CXX_SIZE];
+uint8_t buf[256];
 uint8_t do_action = 0;
 
 /* USER CODE END PV */
@@ -69,23 +70,34 @@ static void MX_CRC_Init(void);
 /* USER CODE BEGIN 0 */
 
 // Send printf to uart1
-int _write(int fd, char* ptr, int len) {
-  HAL_StatusTypeDef hstatus;
+int _write(int fd, char *ptr, int len) {
+    HAL_StatusTypeDef hstatus;
 
-  if (fd == 1 || fd == 2) {
-    hstatus = HAL_UART_Transmit(&huart1, (uint8_t *) ptr, len, HAL_MAX_DELAY);
-    if (hstatus == HAL_OK)
-      return len;
-    else
-      return -1;
-  }
-  return -1;
+    if (fd == 1 || fd == 2) {
+        hstatus = HAL_UART_Transmit(&huart1, (uint8_t*) ptr, len, HAL_MAX_DELAY);
+        if (hstatus == HAL_OK)
+            return len;
+        else
+            return -1;
+    }
+    return -1;
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (GPIO_Pin == BTN_Pin) // If the button
     {
         do_action = 1;
+    }
+}
+
+void dump_buf(uint8_t *buf, uint32_t size) {
+    for (uint32_t i = 0; i < size; ++i) {
+        if (i % 16 == 0) {
+            printf("0x%08x: ", i);
+        }
+        printf("%02x ", buf[i]);
+        if ((i + 1) % 16 == 0)
+            printf("\n");
     }
 }
 
@@ -124,29 +136,36 @@ int main(void)
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
 
-  DBG("\n\n\n--------\nStarting");
+    DBG("\n\n\n--------\nStarting");
 
-  DBG("Scanning I2C bus:");
-  // Go through all possible i2c addresses
+    DBG("Powering up memory");
+    HAL_GPIO_WritePin(POW_GPIO_Port, POW_Pin, GPIO_PIN_SET);
+
+    // Wait a few ms to get ready
+    HAL_Delay(10);
+
+    DBG("Scanning I2C bus:");
+    // Go through all possible i2c addresses
     for (uint8_t i = 0; i < 128; i++) {
 
-        if (HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i<<1), 3, 100) == HAL_OK) {
+        if (HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t) (i << 1), 3, 100) == HAL_OK) {
             // We got an ack
             printf("%2x ", i);
         } else {
             printf("-- ");
         }
 
-        if (i > 0 && (i + 1) % 16 == 0) printf("\n");
+        if (i > 0 && (i + 1) % 16 == 0)
+            printf("\n");
 
     }
 
     printf("\n");
 
-  if (m24cxx_init(&m24cxx, &hi2c1, 0x50) != M24CXX_Ok) {
-      DBG("M24CXX Failed to initialize");
-      Error_Handler();
-  }
+    if (m24cxx_init(&m24cxx, &hi2c1, 0x50) != M24CXX_Ok) {
+        DBG("M24CXX Failed to initialize");
+        Error_Handler();
+    }
 
   /* USER CODE END 2 */
 
@@ -168,10 +187,26 @@ int main(void)
             do_action = 0;
             DBG("Do action!");
 
-            if (m24cxx_read(&m24cxx, 0x80, &buf, sizeof(buf)) != M24CXX_Ok) {
+            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
                 DBG("Returned err");
                 Error_Handler();
             }
+
+            dump_buf(buf, sizeof(buf));
+
+            memset(buf, 0, sizeof(buf));
+
+            if (m24cxx_write(&m24cxx, 0xc0, (uint8_t*) &buf, 0xf) != M24CXX_Ok) {
+                DBG("Returned err");
+                Error_Handler();
+            }
+
+            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
+                DBG("Returned err");
+                Error_Handler();
+            }
+
+            dump_buf(buf, sizeof(buf));
 
         }
 
@@ -340,6 +375,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(POW_GPIO_Port, POW_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : LED_Pin */
   GPIO_InitStruct.Pin = LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
@@ -352,6 +390,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : POW_Pin */
+  GPIO_InitStruct.Pin = POW_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(POW_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);

@@ -22,15 +22,20 @@
 #define M24C01 2
 
 #if M24CXX_MODEL == M24C08
-#define M24CXX_TYPE            "24C08"
-#define M24CXX_SIZE              1024
-#define M24CXX_PAGE_ADDRESS_BITS    2
-#define M24CXX_ADDRESS_BITS         8
+#define M24CXX_TYPE              "24C08"
+#define M24CXX_SIZE                1024
+#define M24CXX_PAGE_ADDRESS_BITS      2
+#define M24CXX_ADDRESS_BITS           8
+#define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_8BIT
+#define M24CXX_READ_PAGE_SIZE       256
+#define M24CXX_WRITE_PAGE_SIZE       16
+#define M24CXX_WRITE_TIMEOUT        100
 #elif M24CXX_MODEL == M24C01
-#define M24CXX_TYPE            "24C01"
-#define M24CXX_SIZE              1024
-#define M24CXX_PAGE_ADDRESS_BITS    2
-#define M24CXX_ADDRESS_BITS         8
+#define M24CXX_TYPE              "24M01"
+#define M24CXX_SIZE              131072
+#define M24CXX_PAGE_ADDRESS_BITS      1
+#define M24CXX_ADDRESS_BITS          16
+#define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_16BIT
 #else
 #error "M24CXX_MODEL must be defined"
 #endif
@@ -54,6 +59,7 @@ typedef enum {
 
 M24CXX_StatusTypeDef m24cxx_init(M24CXX_HandleTypeDef *m24cxx, I2C_HandleTypeDef *i2c, uint8_t i2c_address);
 M24CXX_StatusTypeDef m24cxx_isconnected(M24CXX_HandleTypeDef *m24cxx);
-M24CXX_StatusTypeDef m24cxx_read(M24CXX_HandleTypeDef *m24cxx, uint16_t address, uint8_t *data, uint16_t len);
+M24CXX_StatusTypeDef m24cxx_read(M24CXX_HandleTypeDef *m24cxx, uint32_t address, uint8_t *data, uint16_t len);
+M24CXX_StatusTypeDef m24cxx_write(M24CXX_HandleTypeDef *m24cxx, uint32_t address, uint8_t *data, uint16_t len);
 
 #endif /* M24CXX_H_ */

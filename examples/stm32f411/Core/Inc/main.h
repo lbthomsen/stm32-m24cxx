@@ -64,8 +64,12 @@ void Error_Handler(void);
 #define BTN_Pin GPIO_PIN_0
 #define BTN_GPIO_Port GPIOA
 #define BTN_EXTI_IRQn EXTI0_IRQn
+#define POW_Pin GPIO_PIN_8
+#define POW_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
+
+//#define M24CXX_WC_PIN
 
 #ifdef DEBUG
 #define DBG(...)    printf(__VA_ARGS__);\
