@@ -51,7 +51,7 @@ UART_HandleTypeDef huart1;
 
 M24CXX_HandleTypeDef m24cxx;
 
-uint8_t buf[256];
+uint8_t buf[M24CXX_SIZE];
 uint8_t do_action = 0;
 
 /* USER CODE END PV */
@@ -93,11 +93,30 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 void dump_buf(uint8_t *buf, uint32_t size) {
     for (uint32_t i = 0; i < size; ++i) {
         if (i % 16 == 0) {
-            printf("0x%08x: ", i);
+            printf("0x%08lx: ", i);
         }
         printf("%02x ", buf[i]);
         if ((i + 1) % 16 == 0)
             printf("\n");
+    }
+}
+
+void fill_buffer(uint8_t *buf, uint32_t size, uint8_t type) {
+    switch (type) {
+    case 0:
+        memset(buf, 0x00, size);
+        break;
+    case 1:
+        memset(buf, 0xff, size);
+        break;
+    case 2:
+        memset(buf, 0xaa, size);
+        break;
+    case 3:
+        for (uint32_t i = 0; i < size; ++i) {
+            buf[i] = (uint8_t)i;
+        }
+        break;
     }
 }
 
@@ -194,9 +213,9 @@ int main(void)
 
             dump_buf(buf, sizeof(buf));
 
-            memset(buf, 0, sizeof(buf));
+            fill_buffer(buf, sizeof(buf), 0);
 
-            if (m24cxx_write(&m24cxx, 0xc0, (uint8_t*) &buf, 0xf) != M24CXX_Ok) {
+            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
                 DBG("Returned err");
                 Error_Handler();
             }
@@ -207,6 +226,60 @@ int main(void)
             }
 
             dump_buf(buf, sizeof(buf));
+
+            fill_buffer(buf, sizeof(buf), 1);
+
+            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
+                DBG("Returned err");
+                Error_Handler();
+            }
+
+            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
+                DBG("Returned err");
+                Error_Handler();
+            }
+
+            dump_buf(buf, sizeof(buf));
+
+            fill_buffer(buf, sizeof(buf), 2);
+
+            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
+                DBG("Returned err");
+                Error_Handler();
+            }
+
+            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
+                DBG("Returned err");
+                Error_Handler();
+            }
+
+            dump_buf(buf, sizeof(buf));
+
+            fill_buffer(buf, sizeof(buf), 3);
+
+            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
+                DBG("Returned err");
+                Error_Handler();
+            }
+
+            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
+                DBG("Returned err");
+                Error_Handler();
+            }
+
+            dump_buf(buf, sizeof(buf));
+
+//            if (m24cxx_erase_all(&m24cxx) != M24CXX_Ok) {
+//                DBG("Returned err");
+//                Error_Handler();
+//            }
+//
+//            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
+//                DBG("Returned err");
+//                Error_Handler();
+//            }
+//
+//            dump_buf(buf, sizeof(buf));
 
         }
 
