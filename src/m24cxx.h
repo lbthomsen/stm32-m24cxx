@@ -24,7 +24,6 @@
 #if M24CXX_MODEL == M24C08
 #define M24CXX_TYPE              "24C08"
 #define M24CXX_SIZE                1024
-//#define M24CXX_PAGE_ADDRESS_BITS      2
 #define M24CXX_ADDRESS_BITS           8
 #define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_8BIT
 #define M24CXX_ADDRESS_MASK        0xff
@@ -38,7 +37,7 @@
 #define M24CXX_ADDRESS_BITS          16
 #define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_16BIT
 #else
-#error "M24CXX_MODEL must be defined"
+#error "M24CXX_MODEL must be defined in project properties"
 #endif
 
 #ifdef DEBUG

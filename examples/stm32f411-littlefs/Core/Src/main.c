@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
- ******************************************************************************
- * @file           : main.c
- * @brief          : Main program body
- ******************************************************************************
- * @attention
- *
- * Copyright (c) 2023 Lars Boegild Thomsen <lbthomsen@gmail.com>
- * All rights reserved.
- *
- * This software is licensed under terms that can be found in the LICENSE file
- * in the root directory of this software component.
- * If no LICENSE file comes with this software, it is provided AS-IS.
- *
- ******************************************************************************
- */
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2023 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -23,6 +23,8 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include "m24cxx.h"
+#include "lfs.h"
+#include "littlefs.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -41,19 +43,14 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-CRC_HandleTypeDef hcrc;
-
 I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-
 M24CXX_HandleTypeDef m24cxx;
 
-uint8_t buf[M24CXX_SIZE];
 uint8_t do_action = 0;
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,7 +58,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
-static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -87,36 +83,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (GPIO_Pin == BTN_Pin) // If the button
     {
         do_action = 1;
-    }
-}
-
-void dump_buf(uint8_t *buf, uint32_t size) {
-    for (uint32_t i = 0; i < size; ++i) {
-        if (i % 16 == 0) {
-            printf("0x%08lx: ", i);
-        }
-        printf("%02x ", buf[i]);
-        if ((i + 1) % 16 == 0)
-            printf("\n");
-    }
-}
-
-void fill_buffer(uint8_t *buf, uint32_t size, uint8_t type) {
-    switch (type) {
-    case 0:
-        memset(buf, 0x00, size);
-        break;
-    case 1:
-        memset(buf, 0xff, size);
-        break;
-    case 2:
-        memset(buf, 0xaa, size);
-        break;
-    case 3:
-        for (uint32_t i = 0; i < size; ++i) {
-            buf[i] = (uint8_t)i;
-        }
-        break;
     }
 }
 
@@ -152,141 +118,67 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_USART1_UART_Init();
-  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
 
-    DBG("\n\n\n--------\nStarting");
+  DBG("\n\n\n\n--------\nStarting");
 
-    DBG("Powering up memory");
-    HAL_GPIO_WritePin(POW_GPIO_Port, POW_Pin, GPIO_PIN_SET);
+  DBG("Powering up memory");
+  HAL_GPIO_WritePin(POW_GPIO_Port, POW_Pin, GPIO_PIN_SET);
 
-    // Wait a few ms to get ready
-    HAL_Delay(10);
+  // Wait a few ms to get ready
+  HAL_Delay(10);
 
-    DBG("Scanning I2C bus:");
-    // Go through all possible i2c addresses
-    for (uint8_t i = 0; i < 128; i++) {
+  DBG("Scanning I2C bus:");
+  // Go through all possible i2c addresses
+  for (uint8_t i = 0; i < 128; i++) {
 
-        if (HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t) (i << 1), 3, 100) == HAL_OK) {
-            // We got an ack
-            printf("%2x ", i);
-        } else {
-            printf("-- ");
-        }
+      if (HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t) (i << 1), 3, 100) == HAL_OK) {
+          // We got an ack
+          printf("%2x ", i);
+      } else {
+          printf("-- ");
+      }
 
-        if (i > 0 && (i + 1) % 16 == 0)
-            printf("\n");
+      if (i > 0 && (i + 1) % 16 == 0)
+          printf("\n");
 
-    }
+  }
 
-    printf("\n");
+  printf("\n");
 
-    if (m24cxx_init(&m24cxx, &hi2c1, 0x50) != M24CXX_Ok) {
-        DBG("M24CXX Failed to initialize");
-        Error_Handler();
-    }
+  if (m24cxx_init(&m24cxx, &hi2c1, 0x50) != M24CXX_Ok) {
+      DBG("M24CXX Failed to initialize");
+      Error_Handler();
+  }
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-    uint32_t now = 0, last_blink = 0;
+  uint32_t now = 0, last_blink = 0;
 
-    while (1) {
+  while (1)
+  {
 
-        now = HAL_GetTick();
+      now = HAL_GetTick();
 
-        if (now - last_blink >= 500) {
-            HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-            last_blink = now;
-        }
+      if (now - last_blink >= 500) {
+          HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+          last_blink = now;
+      }
 
-        if (do_action) {
-            do_action = 0;
-            DBG("Do action!");
+      if (do_action) {
+          do_action = 0;
+          DBG("Do action!");
 
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
+      }
 
-            dump_buf(buf, sizeof(buf));
-
-            fill_buffer(buf, sizeof(buf), 0);
-
-            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
-
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-            fill_buffer(buf, sizeof(buf), 1);
-
-            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
-
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-            fill_buffer(buf, sizeof(buf), 2);
-
-            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
-
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-            fill_buffer(buf, sizeof(buf), 3);
-
-            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
-
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-            if (m24cxx_erase_all(&m24cxx) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
-
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                DBG("Returned err");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-        }
 
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    }
+  }
   /* USER CODE END 3 */
 }
 
@@ -333,32 +225,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief CRC Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_CRC_Init(void)
-{
-
-  /* USER CODE BEGIN CRC_Init 0 */
-
-  /* USER CODE END CRC_Init 0 */
-
-  /* USER CODE BEGIN CRC_Init 1 */
-
-  /* USER CODE END CRC_Init 1 */
-  hcrc.Instance = CRC;
-  if (HAL_CRC_Init(&hcrc) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN CRC_Init 2 */
-
-  /* USER CODE END CRC_Init 2 */
-
 }
 
 /**
@@ -460,7 +326,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : BTN_Pin */
   GPIO_InitStruct.Pin = BTN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
 
@@ -490,10 +356,11 @@ static void MX_GPIO_Init(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-    /* User can add his own implementation to report the HAL error return state */
-    __disable_irq();
-    while (1) {
-    }
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
   /* USER CODE END Error_Handler_Debug */
 }
 
