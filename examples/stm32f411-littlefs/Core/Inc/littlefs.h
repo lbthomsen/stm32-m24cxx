@@ -18,20 +18,15 @@
 #ifndef INC_LITTLEFS_H_
 #define INC_LITTLEFS_H_
 
-#include "lfs.h"
-
-#ifdef DEBUG
-#define LFS_DBG(...)    printf(__VA_ARGS__);\
-                        printf("\n");
+#ifdef DEBUGxxx
+#define LFS_DBG(...) printf(__VA_ARGS__);\
+                     printf("\n");
 #else
-#define LFS_DBG(...)
+#define LFS_DBG(...) ;
 #endif
-
-#define LFS_BLOCK_SIZE 0xff
-#define LFS_BLOCK_COUNT 0x04 // 1 MB
 
 extern lfs_t littlefs;
 
-FRESULT littlefs_init(void *key);
+int m24cxx_littlefs_init(M24CXX_HandleTypeDef *m24cxx_init);
 
 #endif /* INC_LITTLEFS_H_ */

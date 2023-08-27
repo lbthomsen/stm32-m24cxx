@@ -140,7 +140,24 @@ M24CXX_StatusTypeDef m24cxx_write(M24CXX_HandleTypeDef *m24cxx, uint32_t address
     return M24CXX_Ok;
 }
 
+M24CXX_StatusTypeDef m24cxx_erase(M24CXX_HandleTypeDef *m24cxx, uint32_t address, uint32_t len) {
+
+    M24CXXDBG("M24CXX erase - address = 0x%04lx len = 0x%04lx", address, len);
+
+    uint8_t buf[len];
+
+    memset(buf, 0xff, len);
+
+    M24CXX_StatusTypeDef result = m24cxx_write(m24cxx, address, (uint8_t*) &buf, len);
+    if (result != M24CXX_Ok)
+        return result;
+
+    return M24CXX_Ok;
+}
+
 M24CXX_StatusTypeDef m24cxx_erase_all(M24CXX_HandleTypeDef *m24cxx) {
+
+    M24CXXDBG("M24CXX erase all");
 
     uint8_t buf[M24CXX_WRITE_PAGE_SIZE];
 

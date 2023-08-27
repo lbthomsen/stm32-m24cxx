@@ -19,7 +19,7 @@
 #define M24CXX_H_
 
 #define M24C08 1
-#define M24C01 2
+#define M24M01 2
 
 #if M24CXX_MODEL == M24C08
 #define M24CXX_TYPE              "24C08"
@@ -30,12 +30,16 @@
 #define M24CXX_READ_PAGE_SIZE       256
 #define M24CXX_WRITE_PAGE_SIZE       16
 #define M24CXX_WRITE_TIMEOUT        100
-#elif M24CXX_MODEL == M24C01
+#elif M24CXX_MODEL == M24M01
 #define M24CXX_TYPE              "24M01"
 #define M24CXX_SIZE              131072
 #define M24CXX_PAGE_ADDRESS_BITS      1
 #define M24CXX_ADDRESS_BITS          16
 #define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_16BIT
+#define M24CXX_ADDRESS_MASK      0xffff
+#define M24CXX_READ_PAGE_SIZE       256
+#define M24CXX_WRITE_PAGE_SIZE      256
+#define M24CXX_WRITE_TIMEOUT        100
 #else
 #error "M24CXX_MODEL must be defined in project properties"
 #endif
@@ -53,14 +57,14 @@ typedef struct {
 } M24CXX_HandleTypeDef;
 
 typedef enum {
-    M24CXX_Ok,
-    M24CXX_Err
+    M24CXX_Ok, M24CXX_Err
 } M24CXX_StatusTypeDef;
 
 M24CXX_StatusTypeDef m24cxx_init(M24CXX_HandleTypeDef *m24cxx, I2C_HandleTypeDef *i2c, uint8_t i2c_address);
 M24CXX_StatusTypeDef m24cxx_isconnected(M24CXX_HandleTypeDef *m24cxx);
 M24CXX_StatusTypeDef m24cxx_read(M24CXX_HandleTypeDef *m24cxx, uint32_t address, uint8_t *data, uint32_t len);
 M24CXX_StatusTypeDef m24cxx_write(M24CXX_HandleTypeDef *m24cxx, uint32_t address, uint8_t *data, uint32_t len);
+M24CXX_StatusTypeDef m24cxx_erase(M24CXX_HandleTypeDef *m24cxx, uint32_t address, uint32_t len);
 M24CXX_StatusTypeDef m24cxx_erase_all(M24CXX_HandleTypeDef *m24cxx);
 
 #endif /* M24CXX_H_ */
