@@ -258,17 +258,17 @@ int main(void)
 
           dump_buf(buf, sizeof(buf));
 
-          if (m24cxx_erase_all(&m24cxx) != M24CXX_Ok) {
-              DBG("Returned err");
-              Error_Handler();
-          }
-
-          if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-              DBG("Returned err");
-              Error_Handler();
-          }
-
-          dump_buf(buf, sizeof(buf));
+//          if (m24cxx_erase_all(&m24cxx) != M24CXX_Ok) {
+//              DBG("Returned err");
+//              Error_Handler();
+//          }
+//
+//          if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
+//              DBG("Returned err");
+//              Error_Handler();
+//          }
+//
+//          dump_buf(buf, sizeof(buf));
 
       }
     /* USER CODE END WHILE */

@@ -2,7 +2,7 @@
 ../Core/Src/main.c:81:6:HAL_GPIO_EXTI_Callback	2
 ../Core/Src/main.c:88:6:dump_buf	4
 ../Core/Src/main.c:99:6:fill_buffer	6
-../Core/Src/main.c:123:5:main	19
+../Core/Src/main.c:123:5:main	17
 ../Core/Src/main.c:285:6:SystemClock_Config	3
 ../Core/Src/main.c:331:13:MX_I2C1_Init	2
 ../Core/Src/main.c:365:13:MX_USART1_UART_Init	2
