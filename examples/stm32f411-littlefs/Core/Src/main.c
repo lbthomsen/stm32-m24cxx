@@ -181,26 +181,12 @@ int main(void) {
 
     DBG("Boot count = %lu start uptime = %lu", boot_count, start_uptime);
 
-    DBG("Creating one large file");
-
-    uint8_t buf[0x1000];
-    for (int i = 0; i < sizeof(buf); ++i) buf[i] = (uint8_t)random();
-
-    lfs_remove(&littlefs, "random.dat");
-    lfs_file_open(&littlefs, &file, "random.dat", LFS_O_RDWR | LFS_O_CREAT | LFS_O_TRUNC);
-    for (int b = 0; b < 0x800; ++b) {
-            lfs_file_write(&littlefs, &file, &buf, sizeof(buf));
-            //DBG("Written %d bytes", sizeof(buf));
-    }
-    lfs_file_close(&littlefs, &file);
-
-
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
 
-    uint32_t now = 0, last_blink = 0;
+    uint32_t now = 0, last_blink = 0, last_update = 0;
 
     while (1) {
 
@@ -209,6 +195,22 @@ int main(void) {
         if (now - last_blink >= 500) {
             HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
             last_blink = now;
+        }
+
+        if (now - last_update >= 10000) {
+
+            uint32_t total_uptime = start_uptime + now;
+
+            DBG("Total uptime = %lu", total_uptime);
+
+            uint32_t start = HAL_GetTick();
+            lfs_file_open(&littlefs, &file, "uptime", LFS_O_RDWR);
+            lfs_file_rewind(&littlefs, &file);
+            lfs_file_write(&littlefs, &file, &total_uptime, sizeof(total_uptime));
+            lfs_file_close(&littlefs, &file);
+            DBG("File update took %lu ms", HAL_GetTick() - start);
+
+            last_update = now;
         }
 
         if (do_action) {

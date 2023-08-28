@@ -5,23 +5,26 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../m24cxx/m24cxx.c 
+../littlefs/lfs.c \
+../littlefs/lfs_util.c 
 
 OBJS += \
-./m24cxx/m24cxx.o 
+./littlefs/lfs.o \
+./littlefs/lfs_util.o 
 
 C_DEPS += \
-./m24cxx/m24cxx.d 
+./littlefs/lfs.d \
+./littlefs/lfs_util.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
-m24cxx/%.o m24cxx/%.su m24cxx/%.cyclo: ../m24cxx/%.c m24cxx/subdir.mk
+littlefs/%.o littlefs/%.su littlefs/%.cyclo: ../littlefs/%.c littlefs/subdir.mk
 	arm-none-eabi-gcc "$<" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F405xx -DM24CXX_MODEL=M24M01 -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -I"/home/lth/src/stm32-m24cxx/examples/stm32f405-m24m01/m24cxx" -I"/home/lth/src/stm32-m24cxx/examples/stm32f405-m24m01/littlefs" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "$@"
 
-clean: clean-m24cxx
+clean: clean-littlefs
 
-clean-m24cxx:
-	-$(RM) ./m24cxx/m24cxx.cyclo ./m24cxx/m24cxx.d ./m24cxx/m24cxx.o ./m24cxx/m24cxx.su
+clean-littlefs:
+	-$(RM) ./littlefs/lfs.cyclo ./littlefs/lfs.d ./littlefs/lfs.o ./littlefs/lfs.su ./littlefs/lfs_util.cyclo ./littlefs/lfs_util.d ./littlefs/lfs_util.o ./littlefs/lfs_util.su
 
-.PHONY: clean-m24cxx
+.PHONY: clean-littlefs
 

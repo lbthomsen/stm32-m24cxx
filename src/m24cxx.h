@@ -44,7 +44,7 @@
 #error "M24CXX_MODEL must be defined in project properties"
 #endif
 
-#ifdef DEBUG
+#ifdef xxxDEBUG
 #define M24CXXDBG(...) printf(__VA_ARGS__);\
                        printf("\n")
 #else

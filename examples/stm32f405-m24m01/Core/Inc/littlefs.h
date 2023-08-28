@@ -18,7 +18,7 @@
 #ifndef INC_LITTLEFS_H_
 #define INC_LITTLEFS_H_
 
-#ifdef DEBUG
+#ifdef DEBUGxxx
 #define LFS_DBG(...) printf(__VA_ARGS__);\
                      printf("\n");
 #else

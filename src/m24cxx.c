@@ -107,7 +107,7 @@ M24CXX_StatusTypeDef m24cxx_write(M24CXX_HandleTypeDef *m24cxx, uint32_t address
   HAL_GPIO_WritePin(_EEPROM_WP_GPIO,_EEPROM_WP_PIN,GPIO_PIN_RESET);
 #endif
 
-    for (uint8_t page = page_start; page <= page_end; ++page) {
+    for (uint32_t page = page_start; page <= page_end; ++page) {
 
         uint32_t i2c_address, start_address, write_len;
 
@@ -115,7 +115,7 @@ M24CXX_StatusTypeDef m24cxx_write(M24CXX_HandleTypeDef *m24cxx, uint32_t address
         write_len = page == page_end ? len - data_offset : (page == page_start ? ((page + 1) * M24CXX_WRITE_PAGE_SIZE) - start_address : M24CXX_WRITE_PAGE_SIZE);
         i2c_address = m24cxx->i2c_address + (start_address >> M24CXX_ADDRESS_BITS);
 
-        M24CXXDBG("Writing page %d, i2c address = 0x%02lx start = 0x%04lx len = 0x%04lx offset = 0x%04lx", page, i2c_address, start_address & M24CXX_ADDRESS_MASK, write_len, data_offset);
+        M24CXXDBG("Writing page %lu, i2c address = 0x%02lx start = 0x%04lx len masked = 0x%04lx = 0x%04lx offset = 0x%04lx", page, i2c_address, start_address, start_address & M24CXX_ADDRESS_MASK, write_len, data_offset);
 
         HAL_StatusTypeDef result = HAL_I2C_Mem_Write(m24cxx->i2c, i2c_address << 1, start_address & M24CXX_ADDRESS_MASK, M24CXX_ADDRESS_SIZE, data + data_offset, write_len, HAL_MAX_DELAY);
 

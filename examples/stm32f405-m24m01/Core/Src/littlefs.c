@@ -26,7 +26,7 @@ int littlefs_erase(const struct lfs_config *c, lfs_block_t block);
 int littlefs_sync(const struct lfs_config *c);
 
 struct lfs_config littlefs_config = {
-        // block device operations
+// block device operations
         .read = littlefs_read,
         .prog = littlefs_prog,
         .erase = littlefs_erase,
@@ -36,7 +36,7 @@ struct lfs_config littlefs_config = {
         .read_size = 16,
         .prog_size = 16,
         .block_size = 256,
-        .block_count = 4,
+        .block_count = 512,
         .cache_size = 16,
         .lookahead_size = 16,
         .block_cycles = 100
