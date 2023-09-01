@@ -40,6 +40,16 @@
 #define M24CXX_READ_PAGE_SIZE       256
 #define M24CXX_WRITE_PAGE_SIZE      256
 #define M24CXX_WRITE_TIMEOUT        100
+#elif M24CXX_MODEL == X4M24M01
+#define M24CXX_TYPE              "24M01"
+#define M24CXX_SIZE              524288
+#define M24CXX_PAGE_ADDRESS_BITS      1
+#define M24CXX_ADDRESS_BITS          16
+#define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_16BIT
+#define M24CXX_ADDRESS_MASK      0xffff
+#define M24CXX_READ_PAGE_SIZE       256
+#define M24CXX_WRITE_PAGE_SIZE      256
+#define M24CXX_WRITE_TIMEOUT        100
 #else
 #error "M24CXX_MODEL must be defined in project properties"
 #endif
