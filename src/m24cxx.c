@@ -22,6 +22,19 @@
 
 #include "m24cxx.h"
 
+/* Private functions */
+
+M24CXX_StatusTypeDef i2c_wait(I2C_HandleTypeDef *i2c, uint16_t i2c_address) {
+
+    uint32_t start_time = HAL_GetTick();
+    while (HAL_I2C_IsDeviceReady(i2c, i2c_address << 1, 1, HAL_MAX_DELAY) != HAL_OK) {
+        if (HAL_GetTick() - start_time >= M24CXX_WRITE_TIMEOUT)
+            return M24CXX_Err;
+    }
+
+    return M24CXX_Ok;
+}
+
 /* Public functions */
 
 M24CXX_StatusTypeDef m24cxx_init(M24CXX_HandleTypeDef *m24cxx, I2C_HandleTypeDef *i2c, uint8_t i2c_address) {
@@ -47,15 +60,6 @@ M24CXX_StatusTypeDef m24cxx_isconnected(M24CXX_HandleTypeDef *m24cxx) {
         return M24CXX_Err;
     }
 
-    return M24CXX_Ok;
-}
-
-M24CXX_StatusTypeDef m24cxx_wait(M24CXX_HandleTypeDef *m24cxx) {
-    uint32_t start_time = HAL_GetTick();
-    while (m24cxx_isconnected(m24cxx) != M24CXX_Ok) {
-        if (HAL_GetTick() - start_time >= M24CXX_WRITE_TIMEOUT)
-            return M24CXX_Err;
-    }
     return M24CXX_Ok;
 }
 
@@ -127,7 +131,7 @@ M24CXX_StatusTypeDef m24cxx_write(M24CXX_HandleTypeDef *m24cxx, uint32_t address
 
         data_offset += write_len;
 
-        if (m24cxx_wait(m24cxx) != M24CXX_Ok) {
+        if (i2c_wait(m24cxx->i2c, i2c_address) != M24CXX_Ok) {
             M24CXXDBG("M24Cxx Device never got ready");
             return M24CXX_Err;
         }

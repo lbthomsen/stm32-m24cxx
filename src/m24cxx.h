@@ -18,8 +18,9 @@
 #ifndef M24CXX_H_
 #define M24CXX_H_
 
-#define M24C08 1
-#define M24M01 2
+#define M24C08 0
+#define M24M01 1
+#define M24M01X4 2
 
 #if M24CXX_MODEL == M24C08
 #define M24CXX_TYPE              "24C08"
@@ -41,7 +42,7 @@
 #define M24CXX_WRITE_PAGE_SIZE      256
 #define M24CXX_WRITE_TIMEOUT        100
 #elif M24CXX_MODEL == M24M01X4
-#define M24CXX_TYPE              "24M01"
+#define M24CXX_TYPE              "4 x 24M01"
 #define M24CXX_SIZE              524288
 #define M24CXX_PAGE_ADDRESS_BITS      1
 #define M24CXX_ADDRESS_BITS          16
@@ -54,7 +55,7 @@
 #error "M24CXX_MODEL must be defined in project properties"
 #endif
 
-#ifdef DEBUG
+#ifdef xxxDEBUG
 #define M24CXXDBG(...) printf(__VA_ARGS__);\
                        printf("\n")
 #else
