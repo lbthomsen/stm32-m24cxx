@@ -26,7 +26,7 @@
 #define M24CXX_SIZE                1024
 #define M24CXX_ADDRESS_BITS           8
 #define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_8BIT
-#define M24CXX_ADDRESS_MASK        0xff
+#define M24CXX_ADDRESS_MASK  0x000000ff
 #define M24CXX_READ_PAGE_SIZE       256
 #define M24CXX_WRITE_PAGE_SIZE       16
 #define M24CXX_WRITE_TIMEOUT        100
@@ -36,17 +36,17 @@
 #define M24CXX_PAGE_ADDRESS_BITS      1
 #define M24CXX_ADDRESS_BITS          16
 #define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_16BIT
-#define M24CXX_ADDRESS_MASK      0xffff
+#define M24CXX_ADDRESS_MASK  0x0000ffff
 #define M24CXX_READ_PAGE_SIZE       256
 #define M24CXX_WRITE_PAGE_SIZE      256
 #define M24CXX_WRITE_TIMEOUT        100
-#elif M24CXX_MODEL == X4M24M01
+#elif M24CXX_MODEL == M24M01X4
 #define M24CXX_TYPE              "24M01"
 #define M24CXX_SIZE              524288
 #define M24CXX_PAGE_ADDRESS_BITS      1
 #define M24CXX_ADDRESS_BITS          16
 #define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_16BIT
-#define M24CXX_ADDRESS_MASK      0xffff
+#define M24CXX_ADDRESS_MASK  0x0000ffff
 #define M24CXX_READ_PAGE_SIZE       256
 #define M24CXX_WRITE_PAGE_SIZE      256
 #define M24CXX_WRITE_TIMEOUT        100
@@ -54,7 +54,7 @@
 #error "M24CXX_MODEL must be defined in project properties"
 #endif
 
-#ifdef xxxDEBUG
+#ifdef DEBUG
 #define M24CXXDBG(...) printf(__VA_ARGS__);\
                        printf("\n")
 #else
