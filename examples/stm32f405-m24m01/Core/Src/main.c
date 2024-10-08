@@ -6,7 +6,7 @@
  ******************************************************************************
  * @attention
  *
- * Copyright (c) 2023 STMicroelectronics.
+ * Copyright (c) 2023 Lars Boegild Thomsen <lbthomsen@gmail.com>
  * All rights reserved.
  *
  * This software is licensed under terms that can be found in the LICENSE file
@@ -213,17 +213,18 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-    uint32_t now = 0, last_blink = 0, last_update = 0;
+    uint32_t now = 0, next_blink = 500, next_update = 1000;
 
     while (1) {
-        now = HAL_GetTick();
 
-        if (now - last_blink >= 500) {
+        now = uwTick;
+
+        if (now >= next_blink) {
             HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-            last_blink = now;
+            next_blink = now + 500;
         }
 
-        if (now - last_update >= 10000) {
+        if (now >= next_update) {
 
             uint32_t total_uptime = start_uptime + now;
 
@@ -236,7 +237,7 @@ int main(void)
             lfs_file_close(&littlefs, &file);
             DBG("File update took %lu ms", HAL_GetTick() - start);
 
-            last_update = now;
+            next_update = now + 1000;
         }
 
         if (do_action) {
