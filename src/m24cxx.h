@@ -18,15 +18,16 @@
 #ifndef M24CXX_H_
 #define M24CXX_H_
 
-#define M24C08 1
-#define M24M01 2
+#define M24C08 0
+#define M24M01 1
+#define M24M01X4 2
 
 #if M24CXX_MODEL == M24C08
 #define M24CXX_TYPE              "24C08"
 #define M24CXX_SIZE                1024
 #define M24CXX_ADDRESS_BITS           8
 #define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_8BIT
-#define M24CXX_ADDRESS_MASK        0xff
+#define M24CXX_ADDRESS_MASK  0x000000ff
 #define M24CXX_READ_PAGE_SIZE       256
 #define M24CXX_WRITE_PAGE_SIZE       16
 #define M24CXX_WRITE_TIMEOUT        100
@@ -36,7 +37,17 @@
 #define M24CXX_PAGE_ADDRESS_BITS      1
 #define M24CXX_ADDRESS_BITS          16
 #define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_16BIT
-#define M24CXX_ADDRESS_MASK      0xffff
+#define M24CXX_ADDRESS_MASK  0x0000ffff
+#define M24CXX_READ_PAGE_SIZE       256
+#define M24CXX_WRITE_PAGE_SIZE      256
+#define M24CXX_WRITE_TIMEOUT        100
+#elif M24CXX_MODEL == M24M01X4
+#define M24CXX_TYPE              "4 x 24M01"
+#define M24CXX_SIZE              524288
+#define M24CXX_PAGE_ADDRESS_BITS      1
+#define M24CXX_ADDRESS_BITS          16
+#define M24CXX_ADDRESS_SIZE           I2C_MEMADD_SIZE_16BIT
+#define M24CXX_ADDRESS_MASK  0x0000ffff
 #define M24CXX_READ_PAGE_SIZE       256
 #define M24CXX_WRITE_PAGE_SIZE      256
 #define M24CXX_WRITE_TIMEOUT        100
@@ -64,7 +75,6 @@ M24CXX_StatusTypeDef m24cxx_init(M24CXX_HandleTypeDef *m24cxx, I2C_HandleTypeDef
 M24CXX_StatusTypeDef m24cxx_isconnected(M24CXX_HandleTypeDef *m24cxx);
 M24CXX_StatusTypeDef m24cxx_read(M24CXX_HandleTypeDef *m24cxx, uint32_t address, uint8_t *data, uint32_t len);
 M24CXX_StatusTypeDef m24cxx_write(M24CXX_HandleTypeDef *m24cxx, uint32_t address, uint8_t *data, uint32_t len);
-M24CXX_StatusTypeDef m24cxx_erase(M24CXX_HandleTypeDef *m24cxx, uint32_t address, uint32_t len);
 M24CXX_StatusTypeDef m24cxx_erase_all(M24CXX_HandleTypeDef *m24cxx);
 
 #endif /* M24CXX_H_ */
