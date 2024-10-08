@@ -1,5 +1,5 @@
-../Core/Src/littlefs.c:48:5:m24cxx_littlefs_init	2
+../Core/Src/littlefs.c:89:5:littlefs_sync	1
 ../Core/Src/littlefs.c:68:5:littlefs_read	2
 ../Core/Src/littlefs.c:75:5:littlefs_prog	2
 ../Core/Src/littlefs.c:82:5:littlefs_erase	2
-../Core/Src/littlefs.c:89:5:littlefs_sync	1
+../Core/Src/littlefs.c:48:5:m24cxx_littlefs_init	2
