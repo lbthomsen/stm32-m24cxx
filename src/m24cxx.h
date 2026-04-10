@@ -57,7 +57,7 @@
 
 #ifdef xxxDEBUG
 #define M24CXXDBG(...) printf(__VA_ARGS__);\
-                       printf("\n")
+                       printf("\r\n")
 #else
 #define M24CXXDBG(...)
 #endif

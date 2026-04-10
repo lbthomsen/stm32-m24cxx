@@ -1,0 +1,10 @@
+../Core/Src/main.c:408:13:MX_GPIO_Init	1
+../Core/Src/main.c:71:5:_write	3
+../Core/Src/main.c:84:6:HAL_GPIO_EXTI_Callback	2
+../Core/Src/main.c:91:6:dump_buf	4
+../Core/Src/main.c:102:6:fill_buffer	6
+../Core/Src/main.c:452:6:Error_Handler	1
+../Core/Src/main.c:341:13:MX_I2C1_Init	1
+../Core/Src/main.c:375:13:MX_USART1_UART_Init	1
+../Core/Src/main.c:295:6:SystemClock_Config	1
+../Core/Src/main.c:127:5:main	7
