@@ -33,13 +33,24 @@ struct lfs_config littlefs_config = {
         .sync = littlefs_sync,
 
         // block device configuration
-        .read_size = 16,
-        .prog_size = 16,
-        .block_size = 256,
-        .block_count = 4,
-        .cache_size = 16,
-        .lookahead_size = 16,
-        .block_cycles = 100
+        // Read/Prog size can be small, but keep them aligned
+            .read_size = 16,
+            .prog_size = 16,
+
+            // Block size MUST be a multiple of your read/prog size
+            // and is typically set to the physical page size (256)
+            .block_size = M24CXX_WRITE_PAGE_SIZE,
+
+            // Total size (524288) / block_size (256) = 2048 blocks
+            .block_count = M24CXX_SIZE / M24CXX_WRITE_PAGE_SIZE,
+
+            // Cache size must be a multiple of read/prog size
+            // and a factor of block size. 64 or 256 is good here.
+            .cache_size = 256,
+
+            .lookahead_size = 16,
+
+            .block_cycles = 10, // EEPROMs have high endurance (1M cycles)
 };
 
 lfs_t littlefs;

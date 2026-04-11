@@ -25,6 +25,8 @@
 #define LFS_DBG(...) ;
 #endif
 
+#define LFS_NO_DEBUG 1
+
 extern lfs_t littlefs;
 
 int m24cxx_littlefs_init(M24CXX_HandleTypeDef *m24cxx_init);

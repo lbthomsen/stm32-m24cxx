@@ -18,6 +18,8 @@
 #ifndef M24CXX_H_
 #define M24CXX_H_
 
+#include <stdio.h>
+
 #define M24C08 0
 #define M24M01 1
 #define M24M01X4 2
