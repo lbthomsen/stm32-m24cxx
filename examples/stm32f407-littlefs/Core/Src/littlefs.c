@@ -5,7 +5,7 @@
  ******************************************************************************
  * @attention
  *
- * Copyright (c) 2023 Lars Boegild Thomsen <lbthomsen@gmail.com>
+ * Copyright (c) 2026 Lars Boegild Thomsen <lbthomsen@gmail.com>
  * All rights reserved.
  *
  * This software is licensed under terms that can be found in the LICENSE file
@@ -50,7 +50,7 @@ struct lfs_config littlefs_config = {
 
             .lookahead_size = 16,
 
-            .block_cycles = 10, // EEPROMs have high endurance (1M cycles)
+            .block_cycles = 100, // EEPROMs have high endurance (1M cycles)
 };
 
 lfs_t littlefs;
@@ -59,9 +59,6 @@ M24CXX_HandleTypeDef *m24cxx_handle;
 int m24cxx_littlefs_init(M24CXX_HandleTypeDef *m24cxx_init) {
     LFS_DBG("LittleFS Init");
     m24cxx_handle = m24cxx_init;
-
-    //littlefs_config.block_size = w25qxx_handle->sector_size;
-    //littlefs_config.block_count = w25qxx_handle->sectors_in_block * w25qxx_handle->block_count;
 
     int err = lfs_mount(&littlefs, &littlefs_config);
 
