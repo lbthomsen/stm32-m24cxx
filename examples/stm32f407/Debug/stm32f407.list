@@ -723,36 +723,36 @@ void Error_Handler(void)
 {
  8000754:	b508      	push	{r3, lr}
     huart1.Instance = USART1;
- 8000756:	4809      	ldr	r0, [pc, #36]	@ (800077c <MX_USART1_UART_Init+0x28>)
- 8000758:	4b09      	ldr	r3, [pc, #36]	@ (8000780 <MX_USART1_UART_Init+0x2c>)
+ 8000756:	480a      	ldr	r0, [pc, #40]	@ (8000780 <MX_USART1_UART_Init+0x2c>)
+ 8000758:	4b0a      	ldr	r3, [pc, #40]	@ (8000784 <MX_USART1_UART_Init+0x30>)
  800075a:	6003      	str	r3, [r0, #0]
-    huart1.Init.BaudRate = 2000000;
- 800075c:	4b09      	ldr	r3, [pc, #36]	@ (8000784 <MX_USART1_UART_Init+0x30>)
- 800075e:	6043      	str	r3, [r0, #4]
+    huart1.Init.BaudRate = 921600;
+ 800075c:	f44f 2361 	mov.w	r3, #921600	@ 0xe1000
+ 8000760:	6043      	str	r3, [r0, #4]
     huart1.Init.WordLength = UART_WORDLENGTH_8B;
- 8000760:	2300      	movs	r3, #0
- 8000762:	6083      	str	r3, [r0, #8]
+ 8000762:	2300      	movs	r3, #0
+ 8000764:	6083      	str	r3, [r0, #8]
     huart1.Init.StopBits = UART_STOPBITS_1;
- 8000764:	60c3      	str	r3, [r0, #12]
+ 8000766:	60c3      	str	r3, [r0, #12]
     huart1.Init.Parity = UART_PARITY_NONE;
- 8000766:	6103      	str	r3, [r0, #16]
+ 8000768:	6103      	str	r3, [r0, #16]
     huart1.Init.Mode = UART_MODE_TX_RX;
- 8000768:	220c      	movs	r2, #12
- 800076a:	6142      	str	r2, [r0, #20]
+ 800076a:	220c      	movs	r2, #12
+ 800076c:	6142      	str	r2, [r0, #20]
     huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
- 800076c:	6183      	str	r3, [r0, #24]
+ 800076e:	6183      	str	r3, [r0, #24]
     huart1.Init.OverSampling = UART_OVERSAMPLING_16;
- 800076e:	61c3      	str	r3, [r0, #28]
+ 8000770:	61c3      	str	r3, [r0, #28]
     if (HAL_UART_Init(&huart1) != HAL_OK)
- 8000770:	f001 ff5f 	bl	8002632 <HAL_UART_Init>
- 8000774:	b900      	cbnz	r0, 8000778 <MX_USART1_UART_Init+0x24>
+ 8000772:	f001 ff5e 	bl	8002632 <HAL_UART_Init>
+ 8000776:	b900      	cbnz	r0, 800077a <MX_USART1_UART_Init+0x26>
 }
- 8000776:	bd08      	pop	{r3, pc}
+ 8000778:	bd08      	pop	{r3, pc}
         Error_Handler();
- 8000778:	f7ff ffcd 	bl	8000716 <Error_Handler>
- 800077c:	20000490 	.word	0x20000490
- 8000780:	40011000 	.word	0x40011000
- 8000784:	001e8480 	.word	0x001e8480
+ 800077a:	f7ff ffcc 	bl	8000716 <Error_Handler>
+ 800077e:	bf00      	nop
+ 8000780:	20000490 	.word	0x20000490
+ 8000784:	40011000 	.word	0x40011000
 
 08000788 <SystemClock_Config>:
 {
