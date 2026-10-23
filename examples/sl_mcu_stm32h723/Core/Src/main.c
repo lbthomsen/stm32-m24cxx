@@ -52,7 +52,6 @@ UART_HandleTypeDef huart1;
 M24CXX_HandleTypeDef m24cxx;
 
 uint8_t buf[1024];
-uint8_t do_action = 1;
 
 /* USER CODE END PV */
 
@@ -69,80 +68,162 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    if (GPIO_Pin == BTN_Pin) // If the button
-    {
-        do_action = 1;
+/**
+ * @brief IEEE 802.3 CRC32 calculation.
+ */
+uint32_t calculate_crc32(const uint8_t *data, size_t length, uint32_t previous_crc) {
+    uint32_t crc = ~previous_crc;
+    for (size_t i = 0; i < length; i++) {
+        crc ^= data[i];
+        for (int j = 0; j < 8; j++) {
+            if (crc & 1)
+                crc = (crc >> 1) ^ 0xEDB88320;
+            else
+                crc >>= 1;
+        }
     }
+    return ~crc;
 }
 
-void dump_buf(uint8_t *buf, uint32_t size) {
-    for (uint32_t i = 0; i < size; ++i) {
-        if (i % 16 == 0) {
-            printf("0x%08lx: ", i);
-        }
-        printf("%02x ", buf[i]);
-        if ((i + 1) % 16 == 0)
-            printf("\r\n");
-    }
-}
+/**
+ * @brief Runs write, read, and CRC verification pass over configurable test size.
+ * @param dev Pointer to initialized m24cxx device struct
+ * @param test_size_bytes Total bytes to benchmark (e.g. 16384 for fast test, M24CXX_SIZE for full 512 kB run)
+ */
+void run_m24cxx_demo(M24CXX_HandleTypeDef *dev, uint32_t test_size_bytes) {
+    uint8_t tx_buf[M24CXX_WRITE_PAGE_SIZE];
+    uint8_t rx_buf[M24CXX_READ_PAGE_SIZE];
 
-void fill_buffer(uint8_t *buf, uint32_t size, uint8_t type) {
-    switch (type) {
-    case 0:
-        memset(buf, 0x00, size);
-        break;
-    case 1:
-        memset(buf, 0xff, size);
-        break;
-    case 2:
-        memset(buf, 0xaa, size);
-        break;
-    case 3:
-        for (uint32_t i = 0; i < size; ++i) {
-            buf[i] = (uint8_t) i;
+    if (test_size_bytes > M24CXX_SIZE) {
+        test_size_bytes = M24CXX_SIZE;
+    }
+
+    printf("\n=== Starting %lu kB (%s) Memory Benchmark ===\n", test_size_bytes / 1024, M24CXX_TYPE);
+
+    // --- WRITE PASS ---
+    printf("Writing %lu kB in %d-byte blocks via m24cxx...\n", test_size_bytes / 1024, M24CXX_WRITE_PAGE_SIZE);
+
+    uint32_t write_crc = 0;
+    uint32_t start_write_tick = uwTick;
+    uint32_t bytes_written = 0;
+
+    for (uint32_t addr = 0; addr < test_size_bytes; addr += M24CXX_WRITE_PAGE_SIZE) {
+
+        for (uint32_t i = 0; i < M24CXX_WRITE_PAGE_SIZE; i++) {
+            tx_buf[i] = (uint8_t) ((addr + i) ^ 0xA5);
         }
-        break;
+
+        write_crc = calculate_crc32(tx_buf, M24CXX_WRITE_PAGE_SIZE, write_crc);
+
+        if (m24cxx_write(dev, addr, tx_buf, M24CXX_WRITE_PAGE_SIZE) != M24CXX_Ok) {
+            printf("\n[ERROR] m24cxx_write failed at 0x%05lX\n", addr);
+            return;
+        }
+
+        bytes_written += M24CXX_WRITE_PAGE_SIZE;
+
+        // Print a dot for every 1 kB (1024 bytes)
+        if (bytes_written % 1024 == 0) {
+            printf(".");
+            fflush(stdout);
+
+            // Wrap line and show progress every 16 kB
+            if ((bytes_written / 1024) % 16 == 0) {
+                printf(" [%lu kB / %lu ms]\n", bytes_written / 1024, uwTick - start_write_tick);
+            }
+        }
+    }
+
+    if ((bytes_written / 1024) % 16 != 0) {
+        printf("\n");
+    }
+
+    uint32_t write_elapsed_ms = uwTick - start_write_tick;
+    printf("Write Complete in %lu ms | CRC32: 0x%08lX\n\n", write_elapsed_ms, write_crc);
+
+    // --- READ PASS ---
+    printf("Reading back %lu kB and verifying CRC...\n", test_size_bytes / 1024);
+
+    uint32_t read_crc = 0;
+    uint32_t start_read_tick = uwTick;
+    uint32_t bytes_read = 0;
+
+    for (uint32_t addr = 0; addr < test_size_bytes; addr += M24CXX_READ_PAGE_SIZE) {
+        memset(rx_buf, 0, M24CXX_READ_PAGE_SIZE);
+
+        if (m24cxx_read(dev, addr, rx_buf, M24CXX_READ_PAGE_SIZE) != M24CXX_Ok) {
+            printf("\n[ERROR] m24cxx_read failed at 0x%05lX\n", addr);
+            return;
+        }
+
+        read_crc = calculate_crc32(rx_buf, M24CXX_READ_PAGE_SIZE, read_crc);
+
+        bytes_read += M24CXX_READ_PAGE_SIZE;
+
+        // Print a dot for every 1 kB (1024 bytes)
+        if (bytes_read % 1024 == 0) {
+            printf(".");
+            fflush(stdout);
+
+            // Wrap line and show progress every 16 kB
+            if ((bytes_read / 1024) % 16 == 0) {
+                printf(" [%lu kB / %lu ms]\n", bytes_read / 1024, uwTick - start_read_tick);
+            }
+        }
+    }
+
+    if ((bytes_read / 1024) % 16 != 0) {
+        printf("\n");
+    }
+
+    uint32_t read_elapsed_ms = uwTick - start_read_tick;
+    printf("Read Complete in %lu ms | CRC32: 0x%08lX\n\n", read_elapsed_ms, read_crc);
+
+    // --- VERIFICATION ---
+    if (write_crc == read_crc) {
+        printf("SUCCESS: CRC Match (0x%08lX)\n\n", write_crc);
+    } else {
+        printf("FAILURE: CRC Mismatch! Write: 0x%08lX != Read: 0x%08lX\n\n", write_crc, read_crc);
     }
 }
 
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
-  /* USER CODE BEGIN 1 */
+    /* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
+    /* USER CODE END 1 */
 
-  /* MPU Configuration--------------------------------------------------------*/
-  MPU_Config();
+    /* MPU Configuration--------------------------------------------------------*/
+    MPU_Config();
 
-  /* MCU Configuration--------------------------------------------------------*/
+    /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
 
-  /* USER CODE BEGIN Init */
+    /* USER CODE BEGIN Init */
 
-  /* USER CODE END Init */
+    /* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
+    /* Configure the system clock */
+    SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+    /* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
+    /* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_USART1_UART_Init();
-  /* USER CODE BEGIN 2 */
+    /* Initialize all configured peripherals */
+    MX_GPIO_Init();
+    MX_I2C1_Init();
+    MX_USART1_UART_Init();
+    /* USER CODE BEGIN 2 */
 
     printf("\n\n\n--------\nStarting\n");
 
@@ -175,10 +256,13 @@ int main(void)
         Error_Handler();
     }
 
-  /* USER CODE END 2 */
+    run_m24cxx_demo(&m24cxx, M24CXX_SIZE);
+    //run_m24cxx_demo(&m24cxx, 16 * 1024);
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+    /* USER CODE END 2 */
+
+    /* Infinite loop */
+    /* USER CODE BEGIN WHILE */
 
     uint32_t now = 0, last_blink = 0;
 
@@ -191,291 +275,211 @@ int main(void)
             last_blink = now;
         }
 
-        if (do_action) {
-            do_action = 0;
-            printf("Do action!\n");
+        /* USER CODE END WHILE */
 
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-            fill_buffer(buf, sizeof(buf), 0);
-
-            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-            fill_buffer(buf, sizeof(buf), 1);
-
-            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-            fill_buffer(buf, sizeof(buf), 2);
-
-            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-            fill_buffer(buf, sizeof(buf), 3);
-
-            if (m24cxx_write(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-            if (m24cxx_erase_all(&m24cxx) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            if (m24cxx_read(&m24cxx, 0x0, (uint8_t*) &buf, sizeof(buf)) != M24CXX_Ok) {
-                printf("Returned err\n");
-                Error_Handler();
-            }
-
-            dump_buf(buf, sizeof(buf));
-
-        }
-
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
+        /* USER CODE BEGIN 3 */
     }
-  /* USER CODE END 3 */
+    /* USER CODE END 3 */
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+    RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
 
-  /** Supply configuration update enable
-  */
-  HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
+    /** Supply configuration update enable
+     */
+    HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
 
-  /** Configure the main internal regulator output voltage
-  */
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
+    /** Configure the main internal regulator output voltage
+     */
+    __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
 
-  while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
+    while (!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {
+    }
 
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 1;
-  RCC_OscInitStruct.PLL.PLLN = 34;
-  RCC_OscInitStruct.PLL.PLLP = 1;
-  RCC_OscInitStruct.PLL.PLLQ = 2;
-  RCC_OscInitStruct.PLL.PLLR = 2;
-  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
-  RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
-  RCC_OscInitStruct.PLL.PLLFRACN = 3072;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
+    /** Initializes the RCC Oscillators according to the specified parameters
+     * in the RCC_OscInitTypeDef structure.
+     */
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+    RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+    RCC_OscInitStruct.PLL.PLLM = 1;
+    RCC_OscInitStruct.PLL.PLLN = 34;
+    RCC_OscInitStruct.PLL.PLLP = 1;
+    RCC_OscInitStruct.PLL.PLLQ = 2;
+    RCC_OscInitStruct.PLL.PLLR = 2;
+    RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
+    RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+    RCC_OscInitStruct.PLL.PLLFRACN = 3072;
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+            {
+        Error_Handler();
+    }
 
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2
-                              |RCC_CLOCKTYPE_D3PCLK1|RCC_CLOCKTYPE_D1PCLK1;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
-  RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
+    /** Initializes the CPU, AHB and APB buses clocks
+     */
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
+            | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2
+            | RCC_CLOCKTYPE_D3PCLK1 | RCC_CLOCKTYPE_D1PCLK1;
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
+    RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
+    RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
-  {
-    Error_Handler();
-  }
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
+            {
+        Error_Handler();
+    }
 }
 
 /**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief I2C1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_I2C1_Init(void)
 {
 
-  /* USER CODE BEGIN I2C1_Init 0 */
+    /* USER CODE BEGIN I2C1_Init 0 */
 
-  /* USER CODE END I2C1_Init 0 */
+    /* USER CODE END I2C1_Init 0 */
 
-  /* USER CODE BEGIN I2C1_Init 1 */
+    /* USER CODE BEGIN I2C1_Init 1 */
 
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00601A5C;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
+    /* USER CODE END I2C1_Init 1 */
+    hi2c1.Instance = I2C1;
+    hi2c1.Init.Timing = 0x00601A5C;
+    hi2c1.Init.OwnAddress1 = 0;
+    hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+    hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+    hi2c1.Init.OwnAddress2 = 0;
+    hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+    hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+    hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+    if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+            {
+        Error_Handler();
+    }
 
-  /** Configure Analogue filter
-  */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-  {
-    Error_Handler();
-  }
+    /** Configure Analogue filter
+     */
+    if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+            {
+        Error_Handler();
+    }
 
-  /** Configure Digital filter
-  */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
-  {
-    Error_Handler();
-  }
+    /** Configure Digital filter
+     */
+    if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+            {
+        Error_Handler();
+    }
 
-  /** I2C Enable Fast Mode Plus
-  */
-  HAL_I2CEx_EnableFastModePlus(I2C_FASTMODEPLUS_I2C1);
-  /* USER CODE BEGIN I2C1_Init 2 */
+    /** I2C Enable Fast Mode Plus
+     */
+    HAL_I2CEx_EnableFastModePlus(I2C_FASTMODEPLUS_I2C1);
+    /* USER CODE BEGIN I2C1_Init 2 */
 
-  /* USER CODE END I2C1_Init 2 */
+    /* USER CODE END I2C1_Init 2 */
 
 }
 
 /**
-  * @brief USART1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief USART1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_USART1_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART1_Init 0 */
+    /* USER CODE BEGIN USART1_Init 0 */
 
-  /* USER CODE END USART1_Init 0 */
+    /* USER CODE END USART1_Init 0 */
 
-  /* USER CODE BEGIN USART1_Init 1 */
+    /* USER CODE BEGIN USART1_Init 1 */
 
-  /* USER CODE END USART1_Init 1 */
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 921600;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART1_Init 2 */
+    /* USER CODE END USART1_Init 1 */
+    huart1.Instance = USART1;
+    huart1.Init.BaudRate = 921600;
+    huart1.Init.WordLength = UART_WORDLENGTH_8B;
+    huart1.Init.StopBits = UART_STOPBITS_1;
+    huart1.Init.Parity = UART_PARITY_NONE;
+    huart1.Init.Mode = UART_MODE_TX_RX;
+    huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+    huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+    huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+    huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+    if (HAL_UART_Init(&huart1) != HAL_OK)
+            {
+        Error_Handler();
+    }
+    if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+            {
+        Error_Handler();
+    }
+    if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+            {
+        Error_Handler();
+    }
+    if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
+            {
+        Error_Handler();
+    }
+    /* USER CODE BEGIN USART1_Init 2 */
 
-  /* USER CODE END USART1_Init 2 */
+    /* USER CODE END USART1_Init 2 */
 
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_GPIO_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  /* USER CODE BEGIN MX_GPIO_Init_1 */
-  /* USER CODE END MX_GPIO_Init_1 */
+    GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+    /* USER CODE BEGIN MX_GPIO_Init_1 */
+    /* USER CODE END MX_GPIO_Init_1 */
 
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOH_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 
-  /*Configure GPIO pin : LED_Pin */
-  GPIO_InitStruct.Pin = LED_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
+    /*Configure GPIO pin : LED_Pin */
+    GPIO_InitStruct.Pin = LED_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : BTN_Pin */
-  GPIO_InitStruct.Pin = BTN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
+    /*Configure GPIO pin : BTN_Pin */
+    GPIO_InitStruct.Pin = BTN_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
 
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(BTN_EXTI_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(BTN_EXTI_IRQn);
+    /* EXTI interrupt init*/
+    HAL_NVIC_SetPriority(BTN_EXTI_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(BTN_EXTI_IRQn);
 
-  /* USER CODE BEGIN MX_GPIO_Init_2 */
-  /* USER CODE END MX_GPIO_Init_2 */
+    /* USER CODE BEGIN MX_GPIO_Init_2 */
+    /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -493,47 +497,47 @@ int __io_putchar(int ch) {
 
 /* USER CODE END 4 */
 
- /* MPU Configuration */
+/* MPU Configuration */
 
 void MPU_Config(void)
 {
-  MPU_Region_InitTypeDef MPU_InitStruct = {0};
+    MPU_Region_InitTypeDef MPU_InitStruct = { 0 };
 
-  /* Disables the MPU */
-  HAL_MPU_Disable();
+    /* Disables the MPU */
+    HAL_MPU_Disable();
 
-  /** Initializes and configures the Region and the memory to be protected
-  */
-  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-  MPU_InitStruct.Number = MPU_REGION_NUMBER0;
-  MPU_InitStruct.BaseAddress = 0x0;
-  MPU_InitStruct.Size = MPU_REGION_SIZE_4GB;
-  MPU_InitStruct.SubRegionDisable = 0x87;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-  MPU_InitStruct.AccessPermission = MPU_REGION_NO_ACCESS;
-  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
-  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
-  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+    /** Initializes and configures the Region and the memory to be protected
+     */
+    MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+    MPU_InitStruct.Number = MPU_REGION_NUMBER0;
+    MPU_InitStruct.BaseAddress = 0x0;
+    MPU_InitStruct.Size = MPU_REGION_SIZE_4GB;
+    MPU_InitStruct.SubRegionDisable = 0x87;
+    MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+    MPU_InitStruct.AccessPermission = MPU_REGION_NO_ACCESS;
+    MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+    MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+    MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+    MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
 
-  HAL_MPU_ConfigRegion(&MPU_InitStruct);
-  /* Enables the MPU */
-  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+    HAL_MPU_ConfigRegion(&MPU_InitStruct);
+    /* Enables the MPU */
+    HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 
 }
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
+    /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
     while (1) {
     }
-  /* USER CODE END Error_Handler_Debug */
+    /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
 /**
